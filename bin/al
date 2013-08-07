@@ -10,8 +10,6 @@
 # - ただ、同名コマンドを現在のパスで登録できるのは欲しい
 #   - Want to be keeping command-name equal script-name
 #
-# al mkproject {project_name}
-#   Register project name and project path (by pwd)
 # al {cmd} / al exec {cmd}
 # al cd {project_name}
 #   Move to project root
@@ -23,19 +21,31 @@ SCRIPT_ROOT=$(cd $(dirname $0) && pwd)'/..'
 CREATE_DB_SQL="${SCRIPT_ROOT}/sql/create_database.sql"
 CURRENT_ROOT=$(pwd)
 DATA_ROOT="${HOME}/.al"
-DB_FILE="${DATA_ROOT}/al.sqlite"
+PROJECT_INDEX_FILE="${DATA_ROOT}/projects.dat"
+PROJECTS_ROOT="${DATA_ROOT}/projects"
+GLOBAL_PROJECT_NAME='__global__'
+GLOBAL_PROJECT_ROOT="${PROJECTS_ROOT}/${GLOBAL_PROJECT_NAME}"
 
 
 # Initialization
 if test ! -d $DATA_ROOT; then
   mkdir $DATA_ROOT
 fi
+if test ! -f $PROJECT_INDEX_FILE; then
+  touch $PROJECT_INDEX_FILE
+fi
+if test ! -d $PROJECTS_ROOT; then
+  mkdir $PROJECTS_ROOT
+fi
+if test ! -d $GLOBAL_PROJECT_ROOT; then
+  mkdir $GLOBAL_PROJECT_ROOT
+fi
 
 
 # Extract sub-command from args
 CMD='exec'
 case "$1" in
-  add|exec|remove)
+  mkproject|add|exec|remove)
     CMD="$1"
     shift
     ;;
@@ -62,6 +72,37 @@ shift $(expr $OPTIND - 1)
 if test "$INVALID_ARGS" = '1'; then
   echo >&2 'Invalid args or options'
   exit 1
+fi
+
+
+# Functions
+get_project_root () {
+  project_name="$1"
+  if test "$project_name" = ""; then
+    project_name=$GLOBAL_PROJECT_NAME
+  fi
+  echo "${PROJECTS_ROOT}/${project_name}"
+}
+
+
+# "mkproject" command
+if test "$CMD" = 'mkproject'; then
+
+  project_name="$1"
+  if test "$project_name" = ''; then
+    echo 'Error: Invalid args' && exit 1
+  fi
+
+  path="${CURRENT_ROOT}"
+  project_root=$(get_project_root ${project_name})
+
+  if test -d $project_root; then
+    echo "Error: ${project_name} is already existed" && exit 1
+  fi
+
+  mkdir $project_root
+  line="${project_name}	${path}"
+  echo "$line" >> $PROJECT_INDEX_FILE
 fi
 
 
